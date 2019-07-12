@@ -155,9 +155,8 @@ private:
           gh1_.setRejected(); // goal was not accepted by remote server
           return;
         }
-        gh1_.setAccepted();
 
-        std::cout << "goal accepted\n";
+        gh1_.setAccepted();
 
         {
           std::lock_guard<std::mutex> lock(mutex_);
@@ -167,7 +166,7 @@ private:
             auto fut = client_->async_cancel_goal(gh2_);
           }
         }
-      };
+      };  
 
       send_goal_ops.feedback_callback =
         [this](ROS2GoalHandle, auto feedback2) mutable
@@ -175,7 +174,6 @@ private:
         ROS1Feedback feedback1;
         translate_feedback_2_to_1(feedback1, *feedback2);
         gh1_.publishFeedback(feedback1);
-        std::cout << "publishing feedback\n";
       };
 
       send_goal_ops.result_callback =
@@ -196,8 +194,9 @@ private:
       
       // send goal to ROS2 server, set-up feedback
       auto gh2_future = client_->async_send_goal(goal2, send_goal_ops);
-      auto goal_handle = gh2_future.get();
 
+      auto future_result = client_->async_get_result(gh2_future.get());
+      auto result = future_result.get();
     }
 
     GoalHandler(ROS1GoalHandle & gh1, ROS2ClientSharedPtr & client)
