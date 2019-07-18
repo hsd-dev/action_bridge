@@ -166,7 +166,7 @@ private:
             auto fut = client_->async_cancel_goal(gh2_);
           }
         }
-      };  
+      };
 
       send_goal_ops.feedback_callback =
         [this](ROS2GoalHandle, auto feedback2) mutable
@@ -176,27 +176,25 @@ private:
         gh1_.publishFeedback(feedback1);
       };
 
-      send_goal_ops.result_callback =
-        [this](auto res2) mutable
-      {
-        ROS1Result res1;
-        translate_result_2_to_1(res1, *res2.result);
 
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (res2.code == rclcpp_action::ResultCode::SUCCEEDED) {
-          gh1_.setSucceeded(res1);
-        } else if (res2.code == rclcpp_action::ResultCode::CANCELED) {
-          gh1_.setCanceled(res1);
-        } else {
-          gh1_.setAborted(res1);
-        }
-      };
-      
       // send goal to ROS2 server, set-up feedback
       auto gh2_future = client_->async_send_goal(goal2, send_goal_ops);
 
       auto future_result = client_->async_get_result(gh2_future.get());
-      auto result = future_result.get();
+      auto res2 = future_result.get();
+
+      ROS1Result res1;
+      translate_result_2_to_1(res1, *(res2.result));
+
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (res2.code == rclcpp_action::ResultCode::SUCCEEDED) {
+        gh1_.setSucceeded(res1);
+      } else if (res2.code == rclcpp_action::ResultCode::CANCELED) {
+        gh1_.setCanceled(res1);
+      } else {
+        gh1_.setAborted(res1);
+      }
+
     }
 
     GoalHandler(ROS1GoalHandle & gh1, ROS2ClientSharedPtr & client)
