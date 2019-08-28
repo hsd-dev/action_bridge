@@ -1,5 +1,7 @@
 A package to bridge actions between ROS1 and ROS2. 
-   
+
+Please clone `dashing-devel` branch in case you are working with ROS Dashing.
+
 **NOTE:**   
 - Currently supports forwarding goals from ROS1 (melodic) action client to ROS2 (crystal) action server  
 - As an example, implemented interfaces for the action bridge for FibonacciAction   
