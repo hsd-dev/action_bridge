@@ -59,6 +59,10 @@ install(TARGETS action_bridge_follow_joint_trajectory_node action_bridge_fibonac
     DESTINATION lib/${PROJECT_NAME}
 )
 
+install(DIRECTORY include/
+    DESTINATION include/
+)
+  
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
