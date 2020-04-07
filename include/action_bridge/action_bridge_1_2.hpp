@@ -21,7 +21,6 @@
 #endif
 #include <ros/ros.h>
 #include <actionlib/server/action_server.h>
-#include <actionlib/client/action_client.h>
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
@@ -38,37 +37,24 @@
 #include <utility>
 
 template <class ROS1_T, class ROS2_T>
-class ActionBridge
+class ActionBridge_1_2
 {
 public:
   using ROS1GoalHandle = typename actionlib::ActionServer<ROS1_T>::GoalHandle;
-  using ROS2ServerGoalHandle = typename rclcpp_action::ServerGoalHandle<ROS2_T>;
-  using ROS2Goal = typename ROS2_T::Goal;
-  ActionBridge(
+  ActionBridge_1_2(
       ros::NodeHandle ros1_node,
       rclcpp::Node::SharedPtr ros2_node,
       const std::string action_name)
       : ros1_node_(ros1_node), ros2_node_(ros2_node),
-        server_1_(ros1_node, action_name,
-                  std::bind(&ActionBridge::goal_cb, this, std::placeholders::_1),
-                  std::bind(&ActionBridge::cancel_cb, this, std::placeholders::_1),
-                  false),
-        client_1_(ros1_node, action_name)
+        server_(ros1_node, action_name,
+                std::bind(&ActionBridge_1_2::goal_cb, this, std::placeholders::_1),
+                std::bind(&ActionBridge_1_2::cancel_cb, this, std::placeholders::_1),
+                false)
   {
-    server_1_.start();
-    client_2_ = rclcpp_action::create_client<ROS2_T>(ros2_node, action_name);
-
-    server_2_ = rclcpp_action::create_server<ROS2_T>(ros2_node_->get_node_base_interface(),
-                                                     ros2_node_->get_node_clock_interface(),
-                                                     ros2_node_->get_node_logging_interface(),
-                                                     ros2_node_->get_node_waitables_interface(),
-                                                     action_name,
-                                                     std::bind(&ActionBridge::handle_goal, this, std::placeholders::_1, std::placeholders::_2),
-                                                     std::bind(&ActionBridge::handle_cancel, this, std::placeholders::_1),
-                                                     std::bind(&ActionBridge::handle_accepted, this, std::placeholders::_1));
+    server_.start();
+    client_ = rclcpp_action::create_client<ROS2_T>(ros2_node, action_name);
   }
 
-  // ROS1 callbacks
   void cancel_cb(ROS1GoalHandle gh1)
   {
     // try to find goal and cancel it
@@ -78,8 +64,7 @@ public:
     {
       std::thread([handler = it->second]() mutable {
         handler->cancel();
-      })
-          .detach();
+      }).detach();
     }
   }
   void goal_cb(ROS1GoalHandle gh1)
@@ -87,8 +72,8 @@ public:
     const std::string goal_id = gh1.getGoalID().id;
 
     // create a new handler for the goal
-    std::shared_ptr<GoalHandler21> handler;
-    handler.reset(new GoalHandler21(gh1, client_2_));
+    std::shared_ptr<GoalHandler> handler;
+    handler.reset(new GoalHandler(gh1, client_));
     std::lock_guard<std::mutex> lock(mutex_);
     goals_.insert(std::make_pair(goal_id, handler));
 
@@ -100,28 +85,7 @@ public:
       // clean-up
       std::lock_guard<std::mutex> lock(mutex_);
       goals_.erase(goal_id);
-    })
-        .detach();
-  }
-
-  //ROS2 callbacks
-  rclcpp_action::GoalResponse handle_goal(
-      const rclcpp_action::GoalUUID &uuid,
-      std::shared_ptr<const ROS2Goal> goal)
-  {
-    (void)uuid;
-    // return rclcpp_action::GoalResponse::ACCEPTED;
-  }
-
-  rclcpp_action::CancelResponse handle_cancel(
-      std::shared_ptr<ROS2ServerGoalHandle> gh2)
-  {
-    (void)gh2;
-    return rclcpp_action::CancelResponse::ACCEPT;
-  }
-
-  void handle_accepted(std::shared_ptr<ROS2ServerGoalHandle> gh2)
-  {
+    }).detach();
   }
 
   static int main(const std::string &action_name, int argc, char *argv[])
@@ -136,7 +100,7 @@ public:
     rclcpp::init(argc, argv);
     auto ros2_node = rclcpp::Node::make_shared(node_name);
 
-    ActionBridge<ROS1_T, ROS2_T> action_bridge(ros1_node, ros2_node, action_name);
+    ActionBridge_1_2<ROS1_T, ROS2_T> action_bridge(ros1_node, ros2_node, action_name);
 
     // // ROS 1 asynchronous spinner
     ros::AsyncSpinner async_spinner(0);
@@ -148,21 +112,18 @@ public:
   }
 
 private:
-  using ROS1Server = typename actionlib::ActionServer<ROS1_T>;
-  using ROS1Client = typename actionlib::ActionClient<ROS1_T>;
   using ROS1Goal = typename actionlib::ActionServer<ROS1_T>::Goal;
   using ROS1Feedback = typename actionlib::ActionServer<ROS1_T>::Feedback;
   using ROS1Result = typename actionlib::ActionServer<ROS1_T>::Result;
-
+  using ROS2Goal = typename ROS2_T::Goal;
   using ROS2Feedback = typename ROS2_T::Feedback;
   using ROS2Result = typename ROS2_T::Result;
-  using ROS2ClientGoalHandle = typename rclcpp_action::ClientGoalHandle<ROS2_T>::SharedPtr;
+  using ROS2GoalHandle = typename rclcpp_action::ClientGoalHandle<ROS2_T>::SharedPtr;
   using ROS2ClientSharedPtr = typename rclcpp_action::Client<ROS2_T>::SharedPtr;
-  using ROS2ServerSharedPtr = typename rclcpp_action::Server<ROS2_T>::SharedPtr;
 
   using ROS2SendGoalOptions = typename rclcpp_action::Client<ROS2_T>::SendGoalOptions;
 
-  class GoalHandler21
+  class GoalHandler
   {
   public:
     void cancel()
@@ -171,7 +132,7 @@ private:
       canceled_ = true;
       if (gh2_)
       { // cancel goal if possible
-        auto fut = client_2_->async_cancel_goal(gh2_);
+        auto fut = client_->async_cancel_goal(gh2_);
       }
     }
     void handle()
@@ -180,7 +141,7 @@ private:
       ROS2Goal goal2;
       translate_goal_1_to_2(*gh1_.getGoal(), goal2);
 
-      if (!client_2_->wait_for_action_server(std::chrono::seconds(1)))
+      if (!client_->wait_for_action_server(std::chrono::seconds(1)))
       {
         std::cout << "Action server not available after waiting" << std::endl;
         gh1_.setRejected();
@@ -206,22 +167,22 @@ private:
 
               if (canceled_)
               { // cancel was called in between
-                auto fut = client_2_->async_cancel_goal(gh2_);
+                auto fut = client_->async_cancel_goal(gh2_);
               }
             }
           };
 
       send_goal_ops.feedback_callback =
-          [this](ROS2ClientGoalHandle, auto feedback2) mutable {
+          [this](ROS2GoalHandle, auto feedback2) mutable {
             ROS1Feedback feedback1;
             translate_feedback_2_to_1(feedback1, *feedback2);
             gh1_.publishFeedback(feedback1);
           };
 
       // send goal to ROS2 server, set-up feedback
-      auto gh2_future = client_2_->async_send_goal(goal2, send_goal_ops);
+      auto gh2_future = client_->async_send_goal(goal2, send_goal_ops);
 
-      auto future_result = client_2_->async_get_result(gh2_future.get());
+      auto future_result = client_->async_get_result(gh2_future.get());
       auto res2 = future_result.get();
 
       ROS1Result res1;
@@ -242,34 +203,13 @@ private:
       }
     }
 
-    GoalHandler21(ROS1GoalHandle &gh1, ROS2ClientSharedPtr &client)
-        : gh1_(gh1), gh2_(nullptr), client_2_(client), canceled_(false) {}
+    GoalHandler(ROS1GoalHandle &gh1, ROS2ClientSharedPtr &client)
+        : gh1_(gh1), gh2_(nullptr), client_(client), canceled_(false) {}
 
   private:
     ROS1GoalHandle gh1_;
-    ROS2ClientGoalHandle gh2_;
-    ROS2ClientSharedPtr client_2_;
-    bool canceled_; // cancel was called
-    std::mutex mutex_;
-  };
-
-  class GoalHandler12
-  {
-  public:
-    void cancel()
-    {
-    }
-    void handle()
-    {
-    }
-
-    GoalHandler12(ROS2ServerGoalHandle &gh2, ROS1Client &client)
-        : gh2_(gh2), gh1_(nullptr), client_1_(client), canceled_(false) {}
-
-  private:
-    ROS1GoalHandle gh1_;
-    ROS2ServerGoalHandle gh2_;
-    ROS1Client client_1_;
+    ROS2GoalHandle gh2_;
+    ROS2ClientSharedPtr client_;
     bool canceled_; // cancel was called
     std::mutex mutex_;
   };
@@ -277,13 +217,11 @@ private:
   ros::NodeHandle ros1_node_;
   rclcpp::Node::SharedPtr ros2_node_;
 
-  ROS1Server server_1_;
-  ROS1Client client_1_;
-  ROS2ClientSharedPtr client_2_;
-  ROS2ServerSharedPtr server_2_;
+  actionlib::ActionServer<ROS1_T> server_;
+  ROS2ClientSharedPtr client_;
 
   std::mutex mutex_;
-  std::map<std::string, std::shared_ptr<GoalHandler21>> goals_;
+  std::map<std::string, std::shared_ptr<GoalHandler>> goals_;
 
   static void translate_goal_1_to_2(const ROS1Goal &, ROS2Goal &);
   static void translate_result_2_to_1(ROS1Result &, const ROS2Result &);
