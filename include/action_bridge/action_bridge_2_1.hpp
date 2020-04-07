@@ -177,6 +177,7 @@ private:
       {
         auto result = std::make_shared<ROS2Result>();
         gh2_->canceled(result);
+        return;
       }
 
       std::condition_variable cond_result;
@@ -186,12 +187,13 @@ private:
           goal1,
           [this, &result_ready, &cond_result](ROS1ClientGoalHandle goal_handle) mutable // transition_cb
           {
-            ROS_INFO("Goal state [%s]", goal_handle.getCommState().toString().c_str());
+            ROS_INFO("Goal [%s]", goal_handle.getCommState().toString().c_str());
             if (goal_handle.getCommState() == actionlib::CommState::RECALLING)
             {
               //cancelled before being processed
-              auto result = std::make_shared<ROS2Result>();
-              gh2_->canceled(result);
+              auto result2 = std::make_shared<ROS2Result>();
+              gh2_->canceled(result2);
+              return;
             }
             else if (goal_handle.getCommState() == actionlib::CommState::ACTIVE)
             {
@@ -201,15 +203,12 @@ private:
             else if (goal_handle.getCommState() == actionlib::CommState::DONE)
             {
               auto result2 = std::make_shared<ROS2Result>();
-              auto result1 = gh1_->getResult();
+              auto result1 = goal_handle.getResult();
               translate_result_1_to_2(*result2, *result1);
+              ROS_INFO("Goal [%s]", goal_handle.getTerminalState().toString().c_str());
               if (goal_handle.getTerminalState() == actionlib::TerminalState::SUCCEEDED)
               {
                 gh2_->succeed(result2);
-              }
-              else if (goal_handle.getTerminalState() == actionlib::TerminalState::PREEMPTED)
-              {
-                gh2_->canceled(result2);
               }
               else
               {
