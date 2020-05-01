@@ -16,13 +16,13 @@
 #define ACTION_BRIDGE__ACTION_BRIDGE_HPP_
 
 #ifdef __clang__
-# pragma clang diagnostic push
-# pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 #endif
 #include <ros/ros.h>
 #include <actionlib/server/action_server.h>
 #ifdef __clang__
-# pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 // include ROS 2
@@ -36,20 +36,20 @@
 #include <thread>
 #include <utility>
 
-template<class ROS1_T, class ROS2_T>
-class ActionBridge
+template <class ROS1_T, class ROS2_T>
+class ActionBridge_1_2
 {
 public:
   using ROS1GoalHandle = typename actionlib::ActionServer<ROS1_T>::GoalHandle;
-  ActionBridge(
-    ros::NodeHandle ros1_node,
-    rclcpp::Node::SharedPtr ros2_node,
-    const std::string action_name)
-  : ros1_node_(ros1_node), ros2_node_(ros2_node),
-    server_(ros1_node, action_name,
-      std::bind(&ActionBridge::goal_cb, this, std::placeholders::_1),
-      std::bind(&ActionBridge::cancel_cb, this, std::placeholders::_1),
-      false)
+  ActionBridge_1_2(
+      ros::NodeHandle ros1_node,
+      rclcpp::Node::SharedPtr ros2_node,
+      const std::string action_name)
+      : ros1_node_(ros1_node), ros2_node_(ros2_node),
+        server_(ros1_node, action_name,
+                std::bind(&ActionBridge_1_2::goal_cb, this, std::placeholders::_1),
+                std::bind(&ActionBridge_1_2::cancel_cb, this, std::placeholders::_1),
+                false)
   {
     server_.start();
     client_ = rclcpp_action::create_client<ROS2_T>(ros2_node, action_name);
@@ -60,10 +60,11 @@ public:
     // try to find goal and cancel it
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = goals_.find(gh1.getGoalID().id);
-    if (it != goals_.end()) {
+    if (it != goals_.end())
+    {
       std::thread([handler = it->second]() mutable {
-          handler->cancel();
-        }).detach();
+        handler->cancel();
+      }).detach();
     }
   }
   void goal_cb(ROS1GoalHandle gh1)
@@ -78,16 +79,16 @@ public:
 
     RCLCPP_INFO(ros2_node_->get_logger(), "Sending goal");
     std::thread([handler, goal_id, this]() mutable {
-        // execute the goal remotely
-        handler->handle();
+      // execute the goal remotely
+      handler->handle();
 
-        // clean-up
-        std::lock_guard<std::mutex> lock(mutex_);
-        goals_.erase(goal_id);
-      }).detach();
+      // clean-up
+      std::lock_guard<std::mutex> lock(mutex_);
+      goals_.erase(goal_id);
+    }).detach();
   }
 
-  static int main(const std::string & action_name, int argc, char * argv[])
+  static int main(const std::string &action_name, int argc, char *argv[])
   {
     std::string node_name = "action_bridge_" + action_name;
     std::replace(node_name.begin(), node_name.end(), '/', '_');
@@ -99,7 +100,7 @@ public:
     rclcpp::init(argc, argv);
     auto ros2_node = rclcpp::Node::make_shared(node_name);
 
-    ActionBridge<ROS1_T, ROS2_T> action_bridge(ros1_node, ros2_node, action_name);
+    ActionBridge_1_2<ROS1_T, ROS2_T> action_bridge(ros1_node, ros2_node, action_name);
 
     // // ROS 1 asynchronous spinner
     ros::AsyncSpinner async_spinner(0);
@@ -129,7 +130,8 @@ private:
     {
       std::lock_guard<std::mutex> lock(mutex_);
       canceled_ = true;
-      if (gh2_) { // cancel goal if possible
+      if (gh2_)
+      { // cancel goal if possible
         auto fut = client_->async_cancel_goal(gh2_);
       }
     }
@@ -139,7 +141,8 @@ private:
       ROS2Goal goal2;
       translate_goal_1_to_2(*gh1_.getGoal(), goal2);
 
-      if (!client_->wait_for_action_server(std::chrono::seconds(1))) {
+      if (!client_->wait_for_action_server(std::chrono::seconds(1)))
+      {
         std::cout << "Action server not available after waiting" << std::endl;
         gh1_.setRejected();
         return;
@@ -148,34 +151,33 @@ private:
       //Changes as per Dashing
       auto send_goal_ops = ROS2SendGoalOptions();
       send_goal_ops.goal_response_callback =
-        [this](auto gh2_future) mutable
-      {
-        auto goal_handle = gh2_future.get();
-        if (!goal_handle) {
-          gh1_.setRejected(); // goal was not accepted by remote server
-          return;
-        }
+          [this](auto gh2_future) mutable {
+            auto goal_handle = gh2_future.get();
+            if (!goal_handle)
+            {
+              gh1_.setRejected(); // goal was not accepted by remote server
+              return;
+            }
 
-        gh1_.setAccepted();
+            gh1_.setAccepted();
 
-        {
-          std::lock_guard<std::mutex> lock(mutex_);
-          gh2_ = goal_handle;
+            {
+              std::lock_guard<std::mutex> lock(mutex_);
+              gh2_ = goal_handle;
 
-          if (canceled_) { // cancel was called in between
-            auto fut = client_->async_cancel_goal(gh2_);
-          }
-        }
-      };
+              if (canceled_)
+              { // cancel was called in between
+                auto fut = client_->async_cancel_goal(gh2_);
+              }
+            }
+          };
 
       send_goal_ops.feedback_callback =
-        [this](ROS2GoalHandle, auto feedback2) mutable
-      {
-        ROS1Feedback feedback1;
-        translate_feedback_2_to_1(feedback1, *feedback2);
-        gh1_.publishFeedback(feedback1);
-      };
-
+          [this](ROS2GoalHandle, auto feedback2) mutable {
+            ROS1Feedback feedback1;
+            translate_feedback_2_to_1(feedback1, *feedback2);
+            gh1_.publishFeedback(feedback1);
+          };
 
       // send goal to ROS2 server, set-up feedback
       auto gh2_future = client_->async_send_goal(goal2, send_goal_ops);
@@ -187,18 +189,22 @@ private:
       translate_result_2_to_1(res1, *(res2.result));
 
       std::lock_guard<std::mutex> lock(mutex_);
-      if (res2.code == rclcpp_action::ResultCode::SUCCEEDED) {
+      if (res2.code == rclcpp_action::ResultCode::SUCCEEDED)
+      {
         gh1_.setSucceeded(res1);
-      } else if (res2.code == rclcpp_action::ResultCode::CANCELED) {
+      }
+      else if (res2.code == rclcpp_action::ResultCode::CANCELED)
+      {
         gh1_.setCanceled(res1);
-      } else {
+      }
+      else
+      {
         gh1_.setAborted(res1);
       }
-
     }
 
-    GoalHandler(ROS1GoalHandle & gh1, ROS2ClientSharedPtr & client)
-    : gh1_(gh1), gh2_(nullptr), client_(client), canceled_(false) {}
+    GoalHandler(ROS1GoalHandle &gh1, ROS2ClientSharedPtr &client)
+        : gh1_(gh1), gh2_(nullptr), client_(client), canceled_(false) {}
 
   private:
     ROS1GoalHandle gh1_;
@@ -206,7 +212,6 @@ private:
     ROS2ClientSharedPtr client_;
     bool canceled_; // cancel was called
     std::mutex mutex_;
-
   };
 
   ros::NodeHandle ros1_node_;

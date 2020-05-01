@@ -20,7 +20,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 
-find_package(example_interfaces REQUIRED)
+find_package(action_tutorials REQUIRED)
 find_package(control_msgs REQUIRED)
 
 # find ROS 1 packages
@@ -39,24 +39,44 @@ ament_export_include_directories(include)
 
 include_directories(include)
 
-add_executable(action_bridge_follow_joint_trajectory_node
-    "src/action_bridge_follow_joint_trajectory.cpp"
+add_executable(action_bridge_follow_joint_trajectory_1_2
+    "src/action_bridge_follow_joint_trajectory_1_2.cpp"
 )
-ament_target_dependencies(action_bridge_follow_joint_trajectory_node
+ament_target_dependencies(action_bridge_follow_joint_trajectory_1_2
     "ros1_roscpp" "ros1_actionlib" "ros1_control_msgs"
     "rclcpp" "rclcpp_action" "control_msgs"
 )
 
-add_executable(action_bridge_fibonacci_node
-    "src/action_bridge_fibonacci.cpp"
+add_executable(action_bridge_follow_joint_trajectory_2_1
+    "src/action_bridge_follow_joint_trajectory_2_1.cpp"
 )
-ament_target_dependencies(action_bridge_fibonacci_node
-    "ros1_roscpp" "ros1_actionlib" "ros1_actionlib_tutorials"
-    "rclcpp" "rclcpp_action" "example_interfaces"
+ament_target_dependencies(action_bridge_follow_joint_trajectory_2_1
+    "ros1_roscpp" "ros1_actionlib" "ros1_control_msgs"
+    "rclcpp" "rclcpp_action" "control_msgs"
 )
 
-install(TARGETS action_bridge_follow_joint_trajectory_node action_bridge_fibonacci_node
+add_executable(action_bridge_fibonacci_1_2
+    "src/action_bridge_fibonacci_1_2.cpp"
+)
+ament_target_dependencies(action_bridge_fibonacci_1_2
+    "ros1_roscpp" "ros1_actionlib" "ros1_actionlib_tutorials"
+    "rclcpp" "rclcpp_action" "action_tutorials"
+)
+
+add_executable(action_bridge_fibonacci_2_1
+    "src/action_bridge_fibonacci_2_1.cpp"
+)
+ament_target_dependencies(action_bridge_fibonacci_2_1
+    "ros1_roscpp" "ros1_actionlib" "ros1_actionlib_tutorials"
+    "rclcpp" "rclcpp_action" "action_tutorials"
+)
+
+install(TARGETS action_bridge_follow_joint_trajectory_1_2 action_bridge_follow_joint_trajectory_2_1 action_bridge_fibonacci_1_2 action_bridge_fibonacci_2_1
     DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY include/
+    DESTINATION include/
 )
 
 if(BUILD_TESTING)

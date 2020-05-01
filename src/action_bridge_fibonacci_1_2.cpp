@@ -12,46 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <action_bridge/action_bridge.hpp>
+#include <action_bridge/action_bridge_1_2.hpp>
 
 #ifdef __clang__
-# pragma clang diagnostic push
-# pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 #endif
 #include <actionlib_tutorials/FibonacciAction.h>
 #ifdef __clang__
-# pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 // include ROS 2
-#include <example_interfaces/action/fibonacci.hpp>
+#include <action_tutorials/action/fibonacci.hpp>
 
-using FibonacciActionBridge = ActionBridge<actionlib_tutorials::FibonacciAction,
-    example_interfaces::action::Fibonacci>;
+using FibonacciActionBridge = ActionBridge_1_2<actionlib_tutorials::FibonacciAction,
+                                               action_tutorials::action::Fibonacci>;
 
-template<>
-void FibonacciActionBridge::translate_goal_1_to_2(const ROS1Goal & goal1, ROS2Goal & goal2)
+template <>
+void FibonacciActionBridge::translate_goal_1_to_2(const ROS1Goal &goal1, ROS2Goal &goal2)
 {
   goal2.order = goal1.order;
 }
 
-template<>
+template <>
 void FibonacciActionBridge::translate_result_2_to_1(
-  ROS1Result & result1,
-  const ROS2Result & result2)
+    ROS1Result &result1,
+    const ROS2Result &result2)
 {
   result1.sequence = result2.sequence;
 }
 
-template<>
+template <>
 void FibonacciActionBridge::translate_feedback_2_to_1(
-  ROS1Feedback & feedback1,
-  const ROS2Feedback & feedback2)
+    ROS1Feedback &feedback1,
+    const ROS2Feedback &feedback2)
 {
-  feedback1.sequence = feedback2.sequence;
+  feedback1.sequence = feedback2.partial_sequence;
 }
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
   return FibonacciActionBridge::main("fibonacci", argc, argv);
 }
