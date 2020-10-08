@@ -24,10 +24,10 @@
 #endif
 
 // include ROS 2
-#include <action_tutorials/action/fibonacci.hpp>
+#include <action_tutorials_interfaces/action/fibonacci.hpp>
 
 using FibonacciActionBridge = ActionBridge_2_1<actionlib_tutorials::FibonacciAction,
-                                               action_tutorials::action::Fibonacci>;
+                                               action_tutorials_interfaces::action::Fibonacci>;
 
 template <>
 void FibonacciActionBridge::translate_goal_2_to_1(const ROS2Goal &goal2, ROS1Goal &goal1)

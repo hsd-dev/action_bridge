@@ -20,7 +20,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 
-find_package(action_tutorials REQUIRED)
+find_package(action_tutorials_interfaces REQUIRED)
 find_package(control_msgs REQUIRED)
 
 # find ROS 1 packages
@@ -60,7 +60,7 @@ add_executable(action_bridge_fibonacci_1_2
 )
 ament_target_dependencies(action_bridge_fibonacci_1_2
     "ros1_roscpp" "ros1_actionlib" "ros1_actionlib_tutorials"
-    "rclcpp" "rclcpp_action" "action_tutorials"
+    "rclcpp" "rclcpp_action" "action_tutorials_interfaces"
 )
 
 add_executable(action_bridge_fibonacci_2_1
@@ -68,7 +68,7 @@ add_executable(action_bridge_fibonacci_2_1
 )
 ament_target_dependencies(action_bridge_fibonacci_2_1
     "ros1_roscpp" "ros1_actionlib" "ros1_actionlib_tutorials"
-    "rclcpp" "rclcpp_action" "action_tutorials"
+    "rclcpp" "rclcpp_action" "action_tutorials_interfaces"
 )
 
 install(TARGETS action_bridge_follow_joint_trajectory_1_2 action_bridge_follow_joint_trajectory_2_1 action_bridge_fibonacci_1_2 action_bridge_fibonacci_2_1
