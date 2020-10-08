@@ -1,5 +1,5 @@
 A package to bridge actions between ROS1 and ROS2. 
-   
+
 **NOTE:**   
 - Currently supports forwarding goals from ROS1 (noetic) action client to ROS2 (foxy) action server
 - As an example, implemented interfaces for the action bridge for FibonacciAction   
@@ -14,7 +14,7 @@ sudo apt install ros-noetic-actionlib ros-noetic-actionlib-tutorials ros-noetic-
 ```
 
 **How to build:**  
-  
+
 Clone the repository in the `src` folder of your ROS2 workspace.
 ```
 git clone git@github.com:ipa-hsd/action_bridge.git -b foxy-devel
